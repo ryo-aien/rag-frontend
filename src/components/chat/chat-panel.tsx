@@ -14,8 +14,6 @@ import {
   Send,
   StopCircle,
   Trash2,
-  Bot,
-  User,
   ChevronDown,
   BookOpen,
   Zap,
@@ -219,21 +217,6 @@ function MessageBubble({
       style={{ animationDelay: `${Math.min(index * 30, 150)}ms` }}
     >
       <div className={`flex gap-3 ${isUser ? "flex-row-reverse" : ""}`}>
-        {/* Avatar */}
-        <div
-          className={`shrink-0 h-7 w-7 rounded-lg flex items-center justify-center ${
-            isUser
-              ? "bg-primary/15 text-primary"
-              : "bg-accent/15 text-accent"
-          }`}
-        >
-          {isUser ? (
-            <User className="h-3.5 w-3.5" />
-          ) : (
-            <Bot className="h-3.5 w-3.5" />
-          )}
-        </div>
-
         {/* Content */}
         <div
           className={`flex-1 max-w-[85%] ${isUser ? "text-right" : ""}`}
