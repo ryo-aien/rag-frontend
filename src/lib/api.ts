@@ -135,6 +135,14 @@ export interface DocumentInfo {
   filename: string;
   size_bytes: number;
   updated_at: string;
+  file_type: string;
+}
+
+export interface DeleteResponse {
+  status: string;
+  filename: string;
+  deleted_vectors: number;
+  deleted_records: number;
 }
 
 export interface DocumentListResponse {
@@ -144,6 +152,17 @@ export interface DocumentListResponse {
 export async function fetchDocuments(): Promise<DocumentListResponse> {
   const res = await fetch(`${API_BASE}/v1/documents`);
   if (!res.ok) throw new Error(`Failed to fetch documents: ${res.status}`);
+  return res.json();
+}
+
+export async function deleteDocument(filename: string): Promise<DeleteResponse> {
+  const res = await fetch(`${API_BASE}/v1/documents/${encodeURIComponent(filename)}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Delete failed" }));
+    throw new Error(typeof err.detail === "string" ? err.detail : JSON.stringify(err.detail));
+  }
   return res.json();
 }
 

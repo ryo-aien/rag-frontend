@@ -18,12 +18,26 @@ import {
   BookOpen,
   Zap,
   MessageSquare,
+  Filter,
+  X,
 } from "lucide-react";
+
+export interface MetadataFilter {
+  category?: string;
+  department?: string;
+  file_type?: string;
+}
+
+const CATEGORY_OPTIONS = [
+  "規程", "マニュアル", "ガイドライン", "FAQ", "報告書", "議事録", "お知らせ", "その他",
+];
+
+const FILE_TYPE_OPTIONS = [".pdf", ".txt", ".csv", ".md"];
 
 interface ChatPanelProps {
   messages: ChatMessage[];
   isLoading: boolean;
-  onSend: (message: string) => void;
+  onSend: (message: string, metadataFilter?: MetadataFilter) => void;
   onStop: () => void;
   onClear: () => void;
   selectedSourceCount: number;
@@ -38,28 +52,59 @@ export function ChatPanel({
   selectedSourceCount,
 }: ChatPanelProps) {
   const [input, setInput] = useState("");
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterCategory, setFilterCategory] = useState("");
+  const [filterDepartment, setFilterDepartment] = useState("");
+  const [filterFileType, setFilterFileType] = useState("");
+  const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  const activeFilterCount = [filterCategory, filterDepartment, filterFileType].filter(Boolean).length;
+
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   const handleSubmit = () => {
     const trimmed = input.trim();
     if (!trimmed || isLoading) return;
-    onSend(trimmed);
+    const filter: MetadataFilter = {};
+    if (filterCategory) filter.category = filterCategory;
+    if (filterDepartment) filter.department = filterDepartment;
+    if (filterFileType) filter.file_type = filterFileType;
+    onSend(trimmed, Object.keys(filter).length > 0 ? filter : undefined);
     setInput("");
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
   };
 
+  const clearFilters = () => {
+    setFilterCategory("");
+    setFilterDepartment("");
+    setFilterFileType("");
+  };
+
+  const composingRef = useRef(false);
+
+  const handleCompositionEnd = () => {
+    composingRef.current = true;
+  };
+
+  const handleKeyUp = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      composingRef.current = false;
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-      // Enterのみでは送信せず改行する
+    if (e.key === "Enter" && !e.shiftKey) {
+      if (e.nativeEvent.isComposing || composingRef.current) {
+        e.preventDefault();
+        return;
+      }
+      e.preventDefault();
+      handleSubmit();
     }
   };
 
@@ -109,7 +154,7 @@ export function ChatPanel({
       </div>
 
       {/* Messages */}
-      <ScrollArea className="flex-1" ref={scrollRef}>
+      <ScrollArea className="flex-1">
         <div className="max-w-3xl mx-auto px-6 py-4">
           {messages.length === 0 ? (
             <EmptyState />
@@ -120,12 +165,86 @@ export function ChatPanel({
               ))}
             </div>
           )}
+          <div ref={bottomRef} />
         </div>
       </ScrollArea>
 
       {/* Input */}
       <div className="border-t border-border/50 bg-background/80 backdrop-blur-sm">
         <div className="max-w-3xl mx-auto px-6 py-4">
+          {/* Filter Toggle */}
+          <div className="flex items-center gap-2 mb-2">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-md border transition-all duration-200 ${
+                showFilters || activeFilterCount > 0
+                  ? "border-primary/40 bg-primary/5 text-primary"
+                  : "border-border/50 text-muted-foreground hover:text-foreground hover:border-border"
+              }`}
+            >
+              <Filter className="h-3 w-3" />
+              フィルター
+              {activeFilterCount > 0 && (
+                <span className="text-[9px] bg-primary text-primary-foreground rounded-full px-1.5 py-0 font-mono">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+            {activeFilterCount > 0 && (
+              <button
+                onClick={clearFilters}
+                className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="h-3 w-3" />
+                クリア
+              </button>
+            )}
+          </div>
+
+          {/* Filter Panel */}
+          {showFilters && (
+            <div className="mb-3 p-3 rounded-lg border border-border/50 bg-card/50 space-y-2.5">
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="text-[10px] text-muted-foreground mb-1 block">カテゴリ</label>
+                  <select
+                    value={filterCategory}
+                    onChange={(e) => setFilterCategory(e.target.value)}
+                    className="w-full h-8 text-xs rounded-md border border-border/50 bg-background px-2 focus:border-primary/50 focus:ring-1 focus:ring-primary/20 focus:outline-none"
+                  >
+                    <option value="">全て</option>
+                    {CATEGORY_OPTIONS.map((cat) => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] text-muted-foreground mb-1 block">部署</label>
+                  <input
+                    type="text"
+                    value={filterDepartment}
+                    onChange={(e) => setFilterDepartment(e.target.value)}
+                    placeholder="例: 人事部"
+                    className="w-full h-8 text-xs rounded-md border border-border/50 bg-background px-2 focus:border-primary/50 focus:ring-1 focus:ring-primary/20 focus:outline-none placeholder:text-muted-foreground/40"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-muted-foreground mb-1 block">ファイル形式</label>
+                  <select
+                    value={filterFileType}
+                    onChange={(e) => setFilterFileType(e.target.value)}
+                    className="w-full h-8 text-xs rounded-md border border-border/50 bg-background px-2 focus:border-primary/50 focus:ring-1 focus:ring-primary/20 focus:outline-none"
+                  >
+                    <option value="">全て</option>
+                    {FILE_TYPE_OPTIONS.map((ft) => (
+                      <option key={ft} value={ft}>{ft.toUpperCase().slice(1)}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="relative flex items-end gap-2">
             <div className="flex-1 relative">
               <Textarea
@@ -133,6 +252,8 @@ export function ChatPanel({
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
+                onKeyUp={handleKeyUp}
+                onCompositionEnd={handleCompositionEnd}
                 onInput={handleTextareaInput}
                 placeholder="ドキュメントについて質問..."
                 className="min-h-[44px] max-h-[160px] resize-none pr-4 bg-card/80 border-border/50 focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all text-sm placeholder:text-muted-foreground/50"
@@ -160,7 +281,7 @@ export function ChatPanel({
             )}
           </div>
           <p className="text-[10px] text-muted-foreground/40 mt-2 text-center">
-            Enterで改行 ・ ボタンで送信
+            Enterで送信 ・ Shift+Enterで改行
           </p>
         </div>
       </div>

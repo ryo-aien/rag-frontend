@@ -53,6 +53,7 @@ export function SourceSidebar({
           filename: doc.filename,
           uploadedAt: new Date(doc.updated_at),
           size_bytes: doc.size_bytes,
+          file_type: doc.file_type,
           status: "ready" as const,
           category: "other",
         }));
@@ -182,6 +183,18 @@ export function SourceSidebar({
       // silently fail
     }
   }, []);
+
+  const handleDelete = useCallback(
+    (id: string) => {
+      setSources((prev) => prev.filter((s) => s.id !== id));
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    },
+    [setSources, setSelectedIds]
+  );
 
   const filteredSources =
     activeCategory === "all"
@@ -335,6 +348,7 @@ export function SourceSidebar({
               source={source}
               selected={selectedIds.has(source.id)}
               onSelect={handleSelect}
+              onDelete={handleDelete}
             />
           ))}
 

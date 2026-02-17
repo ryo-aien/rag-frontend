@@ -7,7 +7,7 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import { SourceSidebar } from "@/components/sidebar/source-sidebar";
-import { ChatPanel } from "@/components/chat/chat-panel";
+import { ChatPanel, type MetadataFilter } from "@/components/chat/chat-panel";
 import { type SourceFile } from "@/components/sidebar/source-card";
 import { useChat } from "@/hooks/use-chat";
 
@@ -18,13 +18,24 @@ export default function Home() {
     useChat();
 
   const handleSend = useCallback(
-    (question: string) => {
+    (question: string, chatFilter?: MetadataFilter) => {
       const selectedSources = sources.filter((s) => selectedIds.has(s.id));
-      const metadataFilter =
-        selectedSources.length === 1
-          ? { source: selectedSources[0].filename }
-          : null;
-      sendMessage(question, metadataFilter);
+      const metadataFilter: Record<string, string> = {};
+
+      // ソース選択が1つの場合はsourceフィルターを追加
+      if (selectedSources.length === 1) {
+        metadataFilter.source = selectedSources[0].filename;
+      }
+
+      // チャットパネルのフィルターをマージ
+      if (chatFilter?.category) metadataFilter.category = chatFilter.category;
+      if (chatFilter?.department) metadataFilter.department = chatFilter.department;
+      if (chatFilter?.file_type) metadataFilter.file_type = chatFilter.file_type;
+
+      sendMessage(
+        question,
+        Object.keys(metadataFilter).length > 0 ? metadataFilter : null
+      );
     },
     [sources, selectedIds, sendMessage]
   );
